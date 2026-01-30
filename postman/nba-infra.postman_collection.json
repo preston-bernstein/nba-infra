@@ -1,0 +1,156 @@
+{
+  "info": {
+    "_postman_id": "f2f6e6a7-9c1e-4b2e-9c42-7b5e5d2f7b2e",
+    "name": "nba-infra (proxy -> Node API)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Local collection hitting the Node API through the proxy started by nba-infra. Proxy listens on http://localhost and forwards /api/* to the API container on port 3000."
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Games - Today",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/games/today{{tz}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "today"
+          ],
+          "query": [
+            {
+              "key": "tz",
+              "value": "{{tzValue}}",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Optional tz param (IANA, e.g., America/New_York)."
+      }
+    },
+    {
+      "name": "Games - By Date",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/games?date={{date}}&tz={{tzValue}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games"
+          ],
+          "query": [
+            {
+              "key": "date",
+              "value": "{{date}}",
+              "description": "YYYY-MM-DD"
+            },
+            {
+              "key": "tz",
+              "value": "{{tzValue}}",
+              "disabled": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Games - By ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Snapshot Refresh",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/admin/snapshots/refresh?date={{date}}&tz={{tzValue}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "admin",
+            "snapshots",
+            "refresh"
+          ],
+          "query": [
+            {
+              "key": "date",
+              "value": "{{date}}",
+              "disabled": true
+            },
+            {
+              "key": "tz",
+              "value": "{{tzValue}}",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Requires ADMIN_TOKEN in the API env."
+      }
+    }
+  ],
+  "event": [],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost"
+    },
+    {
+      "key": "date",
+      "value": "2026-01-05"
+    },
+    {
+      "key": "tzValue",
+      "value": "America/New_York"
+    },
+    {
+      "key": "gameId",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    }
+  ]
+}

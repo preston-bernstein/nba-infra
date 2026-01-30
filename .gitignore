@@ -1,2 +1,8 @@
 agents.md
 docs-internal/
+
+# Secrets
+.env
+
+# Local
+CLAUDE.md
