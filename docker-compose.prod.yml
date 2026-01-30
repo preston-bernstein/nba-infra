@@ -1,0 +1,58 @@
+services:
+  proxy:
+    image: caddy:2-alpine
+    command: ["caddy", "reverse-proxy", "--from", ":80", "--to", "api:3000"]
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../nba-analytics-hub/api
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      GAMES_SERVICE_URL: http://go-feed:4000
+      PREDICTOR_SERVICE_URL: http://predictor:5000
+    depends_on:
+      - go-feed
+      - predictor
+    restart: unless-stopped
+
+  go-feed:
+    build:
+      context: ../nba-data-service
+      dockerfile: Dockerfile
+    environment:
+      PORT: 4000
+      METRICS_PORT: 9090
+      PROVIDER: ${PROVIDER:-balldontlie}
+      BALLDONTLIE_BASE_URL: ${BALLDONTLIE_BASE_URL:-https://api.balldontlie.io/v1}
+      BALLDONTLIE_API_KEY: ${BALLDONTLIE_API_KEY}
+      BALLDONTLIE_TIMEZONE: ${BALLDONTLIE_TIMEZONE:-America/New_York}
+    user: "0"
+    volumes:
+      - go-data:/app/data
+    restart: unless-stopped
+
+  predictor:
+    build:
+      context: ../nba-predictor
+      dockerfile: Dockerfile.dev
+    environment:
+      PORT: 5000
+      NBA_DATA_DIR: /work/data_cache
+      NBA_ART_DIR: /work/artifacts
+    volumes:
+      - ${PREDICTOR_DATA_CACHE:-predictor-data-cache}:/work/data_cache
+      - ${PREDICTOR_ARTIFACTS:-predictor-artifacts}:/work/artifacts
+    command: ["uvicorn", "src.service.app:app", "--host", "0.0.0.0", "--port", "5000"]
+    restart: unless-stopped
+
+volumes:
+  predictor-data-cache:
+  predictor-artifacts:
+  go-data:
