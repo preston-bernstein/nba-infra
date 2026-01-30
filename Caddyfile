@@ -1,0 +1,8 @@
+:80 {
+  route /api/* {
+    uri strip_prefix /api
+    reverse_proxy api:3000
+  }
+
+  respond /health 200
+}
