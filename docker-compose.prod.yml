@@ -1,11 +1,15 @@
 services:
   proxy:
     image: caddy:2-alpine
-    command: ["caddy", "reverse-proxy", "--from", ":80", "--to", "api:3000"]
-    depends_on:
-      - api
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
     restart: unless-stopped
 
   api:
@@ -56,3 +60,5 @@ volumes:
   predictor-data-cache:
   predictor-artifacts:
   go-data:
+  caddy_data:
+  caddy_config:
