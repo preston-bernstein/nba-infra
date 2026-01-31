@@ -1,8 +1,8 @@
-:80 {
-  route /api/* {
-    uri strip_prefix /api
+nba-api.prestonbernstein.com {
     reverse_proxy api:3000
-  }
+}
 
-  respond /health 200
+# Local development (HTTP only)
+:80 {
+    reverse_proxy api:3000
 }
