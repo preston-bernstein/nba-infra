@@ -21,9 +21,34 @@ Public-facing notes for running the stack.
 
 - Same topology as local. Differences are env values, images/tags, volumes, and restart policies.
 - Compose: `docker-compose.prod.yml` (builds from sibling repos; restart policies set).
-- Publish only the proxy/API port (80). Keep Go/Python internal.
-- API image also requires a prebuilt `api/dist` with workspace modules; build it in `nba-analytics-hub` before composing.
-- Proxy handles TLS and HTTP→HTTPS when a domain is set; only routes `/api/*`. Current Caddyfile is local-only (`:80`); swap to domain + HTTPS when chosen.
+- Publish ports 80 and 443. Keep Go/Python internal.
+- API image requires a prebuilt `api/dist` with workspace modules; build locally and scp to server.
+- Caddy handles HTTPS automatically via Let's Encrypt when using `nba-api.prestonbernstein.com`.
+
+### HTTPS Setup
+
+The Caddyfile configures automatic HTTPS for `nba-api.prestonbernstein.com`. Caddy obtains and renews certificates automatically.
+
+DNS: A record `nba-api` → `167.71.105.250` (DigitalOcean droplet)
+
+### Seeding the Predictor
+
+The predictor needs training data and model artifacts. On first deploy:
+
+```bash
+# Copy data from local machine to server
+scp -r ~/Documents/Development/nba-predictor/data_cache root@167.71.105.250:/opt/nba-predictor/
+scp -r ~/Documents/Development/nba-predictor/artifacts root@167.71.105.250:/opt/nba-predictor/
+
+# Copy into running container
+ssh root@167.71.105.250 "docker cp /opt/nba-predictor/data_cache/. nba-infra-predictor-1:/work/data_cache/"
+ssh root@167.71.105.250 "docker cp /opt/nba-predictor/artifacts/. nba-infra-predictor-1:/work/artifacts/"
+```
+
+Required files:
+- `data_cache/games.csv` — historical game data
+- `data_cache/features.csv` — engineered features
+- `artifacts/model.joblib` — trained model
 
 ## Environment
 
