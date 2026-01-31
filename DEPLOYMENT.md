@@ -46,6 +46,7 @@ ssh root@167.71.105.250 "docker cp /opt/internal-prediction-service/artifacts/. 
 ```
 
 Required files:
+
 - `data_cache/games.csv` — historical game data
 - `data_cache/features.csv` — engineered features
 - `artifacts/model.joblib` — trained model
