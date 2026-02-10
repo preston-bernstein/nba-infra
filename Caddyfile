@@ -1,4 +1,4 @@
-nba-api.prestonbernstein.com {
+{$DOMAIN} {
     reverse_proxy api:3000
 }
 
