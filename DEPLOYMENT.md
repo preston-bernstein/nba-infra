@@ -24,26 +24,26 @@ Public-facing notes for running the stack.
 - Publish ports 80 and 443. Keep Go/Python internal.
 - API image requires a prebuilt `api/dist` with workspace modules; build locally and scp to server.
 - Predictor uses `Dockerfile.dev`; keep the serve command in `docker-compose.prod.yml` or switch to a production Dockerfile with a CMD.
-- Caddy handles HTTPS automatically via Let's Encrypt when using `nba-api.prestonbernstein.com`.
+- Caddy handles HTTPS automatically via Let's Encrypt when the `DOMAIN` env var is set.
 
 ### HTTPS Setup
 
-The Caddyfile configures automatic HTTPS for `nba-api.prestonbernstein.com`. Caddy obtains and renews certificates automatically.
+The Caddyfile reads the `DOMAIN` env var for the production host block. Set it in your `.env` and Caddy obtains and renews certificates automatically.
 
-DNS: A record `nba-api` -> `167.71.105.250` (DigitalOcean droplet)
+DNS: Point an A record for your domain to your server's IP.
 
 ### Seeding the Predictor
 
-The predictor needs training data and model artifacts. On first deploy:
+The predictor needs training data and model artifacts. On first deploy, copy them to the server and into the running container:
 
 ```bash
 # Copy data from local machine to server
-scp -r ~/Documents/Development/nba-predictor/data_cache root@167.71.105.250:/opt/nba-predictor/
-scp -r ~/Documents/Development/nba-predictor/artifacts root@167.71.105.250:/opt/nba-predictor/
+scp -r /path/to/nba-predictor/data_cache user@<YOUR_SERVER_IP>:/opt/nba-predictor/
+scp -r /path/to/nba-predictor/artifacts user@<YOUR_SERVER_IP>:/opt/nba-predictor/
 
 # Copy into running container
-ssh root@167.71.105.250 "docker cp /opt/nba-predictor/data_cache/. nba-infra-predictor-1:/work/data_cache/"
-ssh root@167.71.105.250 "docker cp /opt/nba-predictor/artifacts/. nba-infra-predictor-1:/work/artifacts/"
+ssh user@<YOUR_SERVER_IP> "docker cp /opt/nba-predictor/data_cache/. nba-infra-predictor-1:/work/data_cache/"
+ssh user@<YOUR_SERVER_IP> "docker cp /opt/nba-predictor/artifacts/. nba-infra-predictor-1:/work/artifacts/"
 ```
 
 Required files:

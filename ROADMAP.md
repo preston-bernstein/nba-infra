@@ -6,7 +6,7 @@ Public snapshot of planned work.
 
 - Local and prod Compose files exist.
 - `.env.example` exists with a public env contract (no secrets).
-- `Caddyfile` is configured for `nba-api.prestonbernstein.com` plus local `:80`.
+- `Caddyfile` reads the `DOMAIN` env var for production HTTPS plus local `:80`.
 - Scripts exist: `scripts/up.sh`, `down.sh`, `logs.sh`, `deploy-vps.sh`.
 - README and `DEPLOYMENT.md` document local and prod usage.
 
