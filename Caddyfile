@@ -1,0 +1,8 @@
+{$DOMAIN} {
+    reverse_proxy api:3000
+}
+
+# Local development (HTTP only)
+:80 {
+    reverse_proxy api:3000
+}
