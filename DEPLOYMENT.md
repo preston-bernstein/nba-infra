@@ -4,7 +4,7 @@ Public-facing notes for running the stack.
 
 ## Local integration
 
-- Target topology: proxy → Node API (`/api/*`) → private Go/Python services on the Docker network.
+- Target topology: proxy -> Node API (`/api/*`) -> private Go/Python services on the Docker network.
 - Compose: `docker-compose.yml` builds from sibling repos (`../nba-analytics-hub/api` for Node API, `../nba-data-service` for Go feed, `../nba-predictor` for Python predictor).
 - `scripts/up.sh` builds `api/dist` when missing. It runs `npx nx docker:build @nba-analytics-hub/api --skip-nx-cache` in `../nba-analytics-hub` with `NX_ISOLATE_PLUGINS=false` and `NX_DAEMON=false`. Use Node 20 and ensure `api/package.json` includes runtime deps (`@nba-analytics-hub/data-access`, `@nba-analytics-hub/testing`).
 - `scripts/up.sh` runs `npx nx reset` and retries once if the API build fails.
@@ -15,7 +15,7 @@ Public-facing notes for running the stack.
 - API env vars should point to internal services: `GAMES_SERVICE_URL=http://go-feed:4000`, `PREDICTOR_SERVICE_URL=http://predictor:5000`.
 - Proxy publishes only port 80. Internal ports: API 3000, Go feed 4000, predictor 5000.
 - Go snapshots: Go feed writes under `/app/data`; Compose mounts a named volume (`go-data`) and runs the service as root to keep it writable/persistent.
-- Predictor: Dockerfile.dev exits after setup (no long-running CMD). Add a uvicorn CMD/entrypoint before using it in production; current Compose will see it exit immediately.
+- Predictor uses `Dockerfile.dev`; Compose sets the uvicorn command. If running outside Compose, use `make serve` or an explicit uvicorn command.
 
 ## Production/VPS
 
@@ -23,13 +23,14 @@ Public-facing notes for running the stack.
 - Compose: `docker-compose.prod.yml` (builds from sibling repos; restart policies set).
 - Publish ports 80 and 443. Keep Go/Python internal.
 - API image requires a prebuilt `api/dist` with workspace modules; build locally and scp to server.
+- Predictor uses `Dockerfile.dev`; keep the serve command in `docker-compose.prod.yml` or switch to a production Dockerfile with a CMD.
 - Caddy handles HTTPS automatically via Let's Encrypt when using `nba-api.prestonbernstein.com`.
 
 ### HTTPS Setup
 
 The Caddyfile configures automatic HTTPS for `nba-api.prestonbernstein.com`. Caddy obtains and renews certificates automatically.
 
-DNS: A record `nba-api` → `167.71.105.250` (DigitalOcean droplet)
+DNS: A record `nba-api` -> `167.71.105.250` (DigitalOcean droplet)
 
 ### Seeding the Predictor
 
@@ -47,15 +48,15 @@ ssh root@167.71.105.250 "docker cp /opt/nba-predictor/artifacts/. nba-infra-pred
 
 Required files:
 
-- `data_cache/games.csv` — historical game data
-- `data_cache/features.csv` — engineered features
-- `artifacts/model.joblib` — trained model
+- `data_cache/games.csv` -- historical game data
+- `data_cache/features.csv` -- engineered features
+- `artifacts/model.joblib` -- trained model
 
 ## Environment
 
-- `.env.example` will capture required env vars once authored. No secrets. Use consistent names (`GO_SERVICE_BASE_URL`, `PREDICTOR_BASE_URL`, `PORT`, `NODE_ENV`).
+- `.env.example` captures required env vars (no secrets). Keep it in sync with Compose and service configs.
 
-## Commands (once Compose exists)
+## Commands
 
 - `docker compose up --build`
 - `docker compose logs -f`

@@ -4,16 +4,17 @@ Public snapshot of planned work.
 
 ## Current
 
-- Docs exist. Local Compose, env template, and local proxy config are present. Prod Compose added. Scripts are pending.
-- Repo names: Node API `nba-analytics-hub`; Go feed `nba-data-service`; Python predictor `nba-predictor`; infra `nba-infra`.
-- Paths/Dockerfiles: see `docs-internal/REPO_PATHS.md` for current compose contexts.
+- Local and prod Compose files exist.
+- `.env.example` exists with a public env contract (no secrets).
+- `Caddyfile` is configured for `nba-api.prestonbernstein.com` plus local `:80`.
+- Scripts exist: `scripts/up.sh`, `down.sh`, `logs.sh`, `deploy-vps.sh`.
+- README and `DEPLOYMENT.md` document local and prod usage.
 
 ## Next steps
 
-- Add `.env.example` with explicit env vars (no secrets; consistent names). **Done.**
-- Add proxy config (`Caddyfile` or Nginx) for `/api/*` only with TLS/redirects once domains are known. Local Caddyfile present; swap in domain + HTTPS when chosen.
-- Add `docker-compose.prod.yml` with explicit images and restart policies; keep private services internal. **Done.**
-- Add scripts for up/down/logs/deploy and a concise README walkthrough if needed.
+- Keep public docs aligned with `docs-internal/*` as configs change.
+- Add a short ops runbook (failure modes, predictor seeding, API build notes).
+- Decide when to move from local builds to tagged images.
 
 ## Guardrails
 

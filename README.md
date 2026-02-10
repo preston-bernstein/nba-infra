@@ -1,12 +1,12 @@
 # nba-infra
 
-[![CI](https://github.com/preston-bernstein/nba-infra/actions/workflows/ci.yml/badge.svg)](https://github.com/preston-bernstein/nba-infra/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![CI](https://github.com/preston-bernstein/nba-infra/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/preston-bernstein/nba-infra/actions/workflows/ci.yml?query=branch%3Amain) [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Infra glue for the NBA stack. Tracks Compose, proxy, env templates, and ops docs. Portfolio repo.
 
 ## Status
 
-- Docs exist. Local/prod Compose, env template, and local proxy config are present. Scripts are pending.
+- Docs exist. Local/prod Compose, env template, and local proxy config are present. Scripts are in `scripts/`.
 
 ## Topology
 
