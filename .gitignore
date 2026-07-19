@@ -6,3 +6,6 @@ docs-internal/
 
 # Local
 CLAUDE.md
+
+# OS
+.DS_Store
