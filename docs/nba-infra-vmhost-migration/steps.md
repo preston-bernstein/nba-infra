@@ -245,15 +245,26 @@ echo ".env whole-file hash matches between desktop.example.internal and vmhost.e
 ```
 
 ### Step 11: Start containers on vmhost.example.internal
-**What**: Invoke `docker compose` from the nba-infra checkout on vmhost.example.internal with the same command shape as desktop.example.internal, bringing up api, go-feed, and predictor in detached mode. Compose will attach to the three pre-populated named volumes and use the .env file for runtime configuration.
+**What**: Invoke `docker compose` from inside the nba-infra checkout on vmhost.example.internal (not with `--project-directory`), bringing up api, go-feed, and predictor in detached mode. Compose will attach to the three pre-populated named volumes and use `--env-file` for runtime configuration.
+
+**Corrected live during execution — three real gaps, none caught by spec-challenge:**
+1. `nba-app`'s `--no-create-home` breaks the local image build (this compose file builds on the host, unlike a pre-built-image deploy) — the build toolchain needs a writable `$HOME`. Fix: pass `HOME=<docker-root>/nba-app` explicitly (a directory `nba-app` already owns) rather than creating a real home directory.
+2. `--project-directory <docker-root>/nba-app` changes the base for *all* relative path resolution in the compose file, not just the project name — `../nba-data-service` resolved to the wrong parent directory. Fix: drop `--project-directory` entirely and run from inside the `nba-infra` checkout (the `cd` must happen as `nba-app`, wrapped inside `sudo -u nba-app bash -c '...'` — a plain `ssh ... "cd ... && sudo -u nba-app ..."` fails because the `cd` would run as the unprivileged SSH user before `sudo` ever applies).
+3. Dropping `--project-directory` also breaks `${BALLDONTLIE_API_KEY}`-style compose-level variable substitution, since Compose's implicit `.env` discovery then looks in the compose file's own directory, not where `.env` actually lives (the parent directory). Fix: pass `--env-file <docker-root>/nba-app/.env` explicitly — independent of directory-based discovery entirely.
+4. `api`'s Dockerfile needs a prebuilt `dist/` (`COPY dist .`) that `docker compose build` doesn't produce — that requires an `nx` build with Node/npm tooling not installed on vmhost.example.internal. Copy the already-built `dist/` from desktop.example.internal directly (tar over SSH, diff-verified) before running this step, rather than installing a Node toolchain for a one-time host migration.
+
 **Files**: None.
-**Test**: `ssh vmhost.example.internal "cd <docker-root>/nba-app/nba-infra && sudo -u nba-app docker compose -p nba-infra -f docker-compose.desktop.yml --project-directory <docker-root>/nba-app ps"` lists three containers (api, go-feed, predictor) with status `Up` or `running`.
+**Test**: `ssh vmhost.example.internal "sudo -u nba-app bash -c 'cd <docker-root>/nba-app/nba-infra && docker compose -p nba-infra -f docker-compose.desktop.yml ps'"` lists three containers (api, go-feed, predictor) with status `Up` or `running`. `ssh vmhost.example.internal "sudo docker inspect nba-infra-go-feed-1 --format '{{range .Config.Env}}{{println .}}{{end}}'"` grepped for `BALLDONTLIE_API_KEY=` shows a non-blank value matching desktop.example.internal's.
 **Depends on**: Steps 2, 8, and 10.
 **Parallelizable**: No.
 
-**Command**:
+**Commands**:
 ```bash
-ssh vmhost.example.internal "cd <docker-root>/nba-app/nba-infra && sudo -u nba-app docker compose -p nba-infra -f docker-compose.desktop.yml --project-directory <docker-root>/nba-app up -d"
+# Prerequisite: copy the prebuilt api/dist from an already-working instance (Node/Nx tooling not required on the target host).
+ssh desktop.example.internal "sudo -u nba-app tar czf - -C <docker-root>/nba-app/nba-analytics-hub/api dist" \
+  | ssh vmhost.example.internal "sudo -u nba-app tar xzf - -C <docker-root>/nba-app/nba-analytics-hub/api"
+
+ssh vmhost.example.internal "sudo -u nba-app bash -c 'cd <docker-root>/nba-app/nba-infra && HOME=<docker-root>/nba-app docker compose -p nba-infra -f docker-compose.desktop.yml --env-file <docker-root>/nba-app/.env up -d'"
 ```
 
 ### Step 12: Verify containers stable for 10 minutes
@@ -424,10 +435,10 @@ echo "Runtime configuration compliant: restart policy correct, no VPN network at
 - **Steps 4–5 (desktop.example.internal stop + export)**: If a failure occurs here — before any transfer has been attempted — fix the issue and retry from Step 4. desktop.example.internal remains stopped (not yet resumed, per the reordered sequence) with zero data-loss risk, since no volumes have been touched.
 - **Steps 6–8 (transfer, resume, volume create+extract)**: If a failure occurs anywhere in this range — including an vmhost.example.internal-only failure such as a checksum mismatch or a volume-create/extract error — retry starting from Step 6 only. The desktop.example.internal tar exports and checksums produced in Step 5 remain valid and do not need to be regenerated; there is no need to repeat Steps 4–5 (re-stopping and re-exporting desktop.example.internal) for a failure that is purely on the vmhost.example.internal side.
 - **Steps 9–10 (.env)**: If .env contents are incorrect after transfer, re-run Step 9 (operator re-runs the direct SSH-to-SSH pipe).
-- **Steps 11–17 (verification)**: If container startup or verification fails, stop containers on vmhost.example.internal (`ssh vmhost.example.internal "cd <docker-root>/nba-app/nba-infra && sudo -u nba-app docker compose -p nba-infra -f docker-compose.desktop.yml --project-directory <docker-root>/nba-app stop"`), review logs, fix the issue, and re-run from Step 11. Desktop-agent remains the live instance until this step completes successfully.
+- **Steps 11–17 (verification)**: If container startup or verification fails, stop containers on vmhost.example.internal (`ssh vmhost.example.internal "sudo -u nba-app bash -c 'cd <docker-root>/nba-app/nba-infra && docker compose -p nba-infra -f docker-compose.desktop.yml stop'"`), review logs, fix the issue, and re-run from Step 11. Desktop-agent remains the live instance until this step completes successfully.
 - **Full rollback** (before end of 7-day window): Remain on desktop.example.internal as the live instance. Stop the vmhost.example.internal containers BEFORE removing any state underneath them, then remove the directory, volumes, and service account:
   ```bash
-  ssh vmhost.example.internal "cd <docker-root>/nba-app/nba-infra && sudo -u nba-app docker compose -p nba-infra -f docker-compose.desktop.yml --project-directory <docker-root>/nba-app stop"
+  ssh vmhost.example.internal "sudo -u nba-app bash -c 'cd <docker-root>/nba-app/nba-infra && docker compose -p nba-infra -f docker-compose.desktop.yml stop'"
   ssh vmhost.example.internal "sudo rm -rf <docker-root>/nba-app"
   ssh vmhost.example.internal "sudo docker volume rm nba-infra_go-data nba-infra_predictor-data-cache nba-infra_predictor-artifacts"
   ssh vmhost.example.internal "sudo userdel nba-app"
