@@ -29,7 +29,7 @@ Infra glue for the NBA stack. Tracks Compose, proxy, env templates, and ops docs
 
 ## Files
 
-- `docker-compose.yml` (local), `docker-compose.prod.yml` (VPS/prod)
+- `docker-compose.yml` (local; also the shared base for prod), `docker-compose.prod.yml` (VPS/prod override — invoke together: `docker compose -f docker-compose.yml -f docker-compose.prod.yml ...`)
 - `.env.example` (no secrets)
 - `Caddyfile` (local-only; update with domain + HTTPS later)
 - `scripts/` (`up.sh`, `down.sh`, `logs.sh`, `deploy-vps.sh`)
