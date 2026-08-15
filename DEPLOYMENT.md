@@ -17,13 +17,20 @@ Public-facing notes for running the stack.
 - Go snapshots: Go feed writes under `/app/data`; Compose mounts a named volume (`go-data`) and runs the service as root to keep it writable/persistent.
 - Predictor uses `Dockerfile.dev`; Compose sets the uvicorn command. If running outside Compose, use `make serve` or an explicit uvicorn command.
 
+## Desktop-tier (internal, non-production)
+
+- A separate, non-production instance runs on an internal host, defined by `docker-compose.desktop.yml` (not part of the local/prod topology above). Same three services (api, go-feed, predictor), api published on port 3020 internally; go-feed and predictor stay internal-only, matching the production topology's privacy rules.
+- Built from source on the host (same sibling-repo layout as local integration); the api image still needs a prebuilt `api/dist` (see `scripts/up.sh` above) — copy it from an existing working instance rather than installing the Node/Nx toolchain fresh if the target host doesn't already have it.
+- Named volumes (`go-data`, `predictor-data-cache`, `predictor-artifacts`) hold this instance's own persistent state, separate from local/prod.
+- No reverse proxy or TLS in front of this instance; not exposed publicly.
+
 ## Production/VPS
 
 - Same topology as local. Differences are env values, images/tags, volumes, and restart policies.
-- Compose: `docker-compose.prod.yml` (builds from sibling repos; restart policies set).
+- Compose: `docker-compose.prod.yml` is an override layered on top of `docker-compose.yml` (the shared base) — it only declares what differs (env, ports, volumes, restart policies, Caddy TLS config). It is not a standalone file; invoke it with both `-f` flags: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d` (this is what `scripts/deploy-vps.sh` does; set `COMPOSE_BASE_FILE` / `COMPOSE_FILE_PATH` to override either path).
 - Publish ports 80 and 443. Keep Go/Python internal.
 - API image requires a prebuilt `api/dist` with workspace modules; build locally and scp to server.
-- Predictor uses `Dockerfile.dev`; keep the serve command in `docker-compose.prod.yml` or switch to a production Dockerfile with a CMD.
+- Predictor uses `Dockerfile.dev`; the uvicorn serve command lives in the shared base (`docker-compose.yml`) and applies here too — keep it in sync there, or switch to a production Dockerfile with a CMD.
 - Caddy handles HTTPS automatically via Let's Encrypt when the `DOMAIN` env var is set.
 
 ### HTTPS Setup
@@ -58,6 +65,14 @@ Required files:
 
 ## Commands
 
+Local (base file only):
+
 - `docker compose up --build`
 - `docker compose logs -f`
 - `docker compose down`
+
+Production/VPS (base + override, or use `scripts/deploy-vps.sh`):
+
+- `docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d`
+- `docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f`
+- `docker compose -f docker-compose.yml -f docker-compose.prod.yml down`
