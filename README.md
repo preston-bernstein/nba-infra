@@ -31,7 +31,7 @@ Infra glue for the NBA stack. Tracks Compose, proxy, env templates, and ops docs
 
 - `docker-compose.yml` (local; also the shared base for prod), `docker-compose.prod.yml` (VPS/prod override — invoke together: `docker compose -f docker-compose.yml -f docker-compose.prod.yml ...`)
 - `.env.example` (no secrets)
-- `Caddyfile` (local-only; update with domain + HTTPS later)
+- `Caddyfile` (local `:80`, plus `DOMAIN`-based HTTPS in prod — mounted into `docker-compose.prod.yml`)
 - `scripts/` (`up.sh`, `down.sh`, `logs.sh`, `deploy-vps.sh`)
 - `DEPLOYMENT.md`, `ROADMAP.md`, `LICENSE`, `CODEOWNERS`
 - Repos: Node API `../nba-analytics-hub/api` (Dockerfile), Go feed `../nba-data-service` (Dockerfile), Predictor `../nba-predictor` (Dockerfile.dev)
