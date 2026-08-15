@@ -1,6 +1,7 @@
 # Spec Challenge Notes
 
 ## Agents run
+
 - Requirements Auditor (haiku): 7 issues found, 7 accepted
 - Scope & Dependency Auditor (sonnet): 10 issues found, 10 accepted
 - Design Devil's Advocate (sonnet): 7 issues found, 5 accepted, 1 rejected (systemd unit / config-drift manifest entry — out of scope for this repo), 1 partially accepted (docs-internal note added, without building out a new formal doc)
