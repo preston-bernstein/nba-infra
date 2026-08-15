@@ -12,6 +12,7 @@
 ## Implementation steps
 
 ### Step 1: Create nba-app service user and directory on xps-agent
+
 **What**: Create a system service account `nba-app` on xps-agent using an idempotent pattern (no interactive login shell, no home directory), add it to the `docker` group so later `sudo -u nba-app docker ...` commands succeed, create the `/opt/docker/nba-app/` directory owned by that account, and re-confirm Docker/Compose is functional on the host.
 **Files**: None.
 **Test**: `ssh xps-agent "id nba-app"` returns uid/gid and lists `docker` among the account's groups; run the step again and verify no error (idempotent). `ssh xps-agent "ls -ld /opt/docker/nba-app"` returns ownership `nba-app:nba-app` and permissions `-rwxr-xr-x` or similar. `ssh xps-agent "docker ps"` succeeds (exit 0, table header printed).
@@ -19,6 +20,7 @@
 **Parallelizable**: No.
 
 **Command**:
+
 ```bash
 ssh xps-agent "id -u nba-app >/dev/null 2>&1 || sudo useradd --system --no-create-home --shell /usr/sbin/nologin --groups docker nba-app"
 # Idempotent: ensure docker-group membership even if the account already existed without it.
@@ -31,6 +33,7 @@ ssh xps-agent "docker ps" || { echo "DOCKER NOT FUNCTIONAL ON XPS-AGENT"; exit 1
 ```
 
 ### Step 2: Clone four repos to xps-agent
+
 **What**: Clone nba-infra, nba-analytics-hub, nba-data-service, and nba-predictor into /opt/docker/nba-app/ as the nba-app user. Repos are public on GitHub, so no authentication required.
 **Files**: None.
 **Test**: `ssh xps-agent "ls -la /opt/docker/nba-app/"` shows four directories: nba-infra, nba-analytics-hub, nba-data-service, nba-predictor. Each contains a `.git/` subdirectory.
@@ -38,6 +41,7 @@ ssh xps-agent "docker ps" || { echo "DOCKER NOT FUNCTIONAL ON XPS-AGENT"; exit 1
 **Parallelizable**: Yes.
 
 **Commands** (run sequentially or in parallel as convenient):
+
 ```bash
 ssh xps-agent "sudo -u nba-app git clone https://github.com/preston-bernstein/nba-infra.git /opt/docker/nba-app/nba-infra"
 ssh xps-agent "sudo -u nba-app git clone https://github.com/preston-bernstein/nba-analytics-hub.git /opt/docker/nba-app/nba-analytics-hub"
@@ -46,6 +50,7 @@ ssh xps-agent "sudo -u nba-app git clone https://github.com/preston-bernstein/nb
 ```
 
 ### Step 3: Verify no out-of-scope changes
+
 **What**: A read-only check, run immediately after cloning (before any host-state changes begin), confirming the migration has not touched anything it shouldn't: production files unchanged, `docker-compose.desktop.yml` unchanged, sibling repositories show no source diff, and no AI-assistant attribution appears anywhere in the xps-agent clone's commit history or tracked files. Running this early — right after clone, before 13 more steps of host-state changes — catches an accidental repo mutation immediately instead of at the very end.
 **Files**: None.
 **Test**: `git status -s` on the listed production/compose files and on each sibling repo returns empty output (no changes); the attribution search returns no matches.
@@ -53,6 +58,7 @@ ssh xps-agent "sudo -u nba-app git clone https://github.com/preston-bernstein/nb
 **Parallelizable**: Yes.
 
 **Commands**:
+
 ```bash
 # Production and compose files must show no uncommitted changes from their repository state.
 OUTPUT=$(ssh xps-agent "cd /opt/docker/nba-app/nba-infra && git status -s docker-compose.prod.yml docker-compose.desktop.yml DEPLOYMENT.md Caddyfile")
@@ -72,6 +78,7 @@ echo "No out-of-scope changes detected: production/compose files clean, sibling 
 ```
 
 ### Step 4: Stop desktop-agent containers for consistent volume snapshot
+
 **What**: Stop the three running containers (api, go-feed, predictor) on desktop-agent to ensure a clean tar snapshot without torn writes mid-export, and positively confirm all three actually reached a stopped state (not just that the `stop` command was issued). Also establishes a per-run scoped tmp directory (`/tmp/nba-migrate-<tag>/`) used by Steps 4–8 instead of bare `/tmp/...` paths.
 **Files**: None.
 **Test**: `ssh desktop-agent "cd /opt/docker/nba-app/nba-infra && sudo -u nba-app docker compose -p nba-infra -f docker-compose.desktop.yml --project-directory /opt/docker/nba-app ps --status running -q"` returns empty output (nothing running).
@@ -79,6 +86,7 @@ echo "No out-of-scope changes detected: production/compose files clean, sibling 
 **Parallelizable**: No (must happen before export; containers stay stopped until the transfer + checksum verification in Step 6 succeeds).
 
 **Command**:
+
 ```bash
 # Define a per-run scoped tmp directory tag; reuse this exact value in Steps 5-8 and Step 15 below.
 export MIGRATION_TAG=$(date +%Y%m%d-%H%M)
@@ -97,6 +105,7 @@ echo "All three containers confirmed stopped."
 ```
 
 ### Step 5: Export volumes from desktop-agent via tar and checksum
+
 **What**: Before tarring, sanity-check each source volume is non-empty (catches a wrong volume name or an unexpectedly-empty source before it gets checksummed as "correctly" empty), record its file count for later comparison, then export the three named volumes (nba-infra_go-data, nba-infra_predictor-data-cache, nba-infra_predictor-artifacts) to `/tmp/nba-migrate-${MIGRATION_TAG}/*.tar.gz` on desktop-agent and generate checksums, saved locally for later comparison.
 **Files**: None.
 **Test**: `ssh desktop-agent "ls -lah /tmp/nba-migrate-${MIGRATION_TAG}/*.tar.gz"` lists three tar files. `cat /tmp/nba-migrate-${MIGRATION_TAG}/nba-source-checksums.txt` (local) shows three sha256 checksums. `cat /tmp/nba-migrate-${MIGRATION_TAG}/source-filecounts.txt` (local) shows three non-zero file counts, one per volume.
@@ -104,6 +113,7 @@ echo "All three containers confirmed stopped."
 **Parallelizable**: No.
 
 **Commands**:
+
 ```bash
 for VOL in nba-infra_go-data nba-infra_predictor-data-cache nba-infra_predictor-artifacts; do
   # Pre-tar sanity check: source volume must be non-empty before we trust a checksum on it.
@@ -123,6 +133,7 @@ echo "All three volumes exported, sanity-checked, and checksummed on desktop-age
 ```
 
 ### Step 6: Transfer volume tars to xps-agent and verify checksums
+
 **What**: Pipe each tar file from desktop-agent to xps-agent via SSH, landing in `/tmp/nba-migrate-${MIGRATION_TAG}/*.tar.gz.tmp` (temporary name). After all three are transferred, checksum each `.tmp` file on xps-agent and verify it matches the source checksum using literal (non-regex) matching, since filenames contain dots. Halt on any mismatch. desktop-agent's containers remain stopped until this step succeeds — see Step 7.
 **Files**: None.
 **Test**: `ssh xps-agent "ls -lah /tmp/nba-migrate-${MIGRATION_TAG}/*.tar.gz.tmp"` shows no `.tmp` files (all renamed to final `.tar.gz` below). `ssh xps-agent "ls -lah /tmp/nba-migrate-${MIGRATION_TAG}/*.tar.gz"` lists three verified tars. Checksum output confirms all three match source.
@@ -130,6 +141,7 @@ echo "All three volumes exported, sanity-checked, and checksummed on desktop-age
 **Parallelizable**: No.
 
 **Commands**:
+
 ```bash
 ssh xps-agent "mkdir -p /tmp/nba-migrate-${MIGRATION_TAG}" || { echo "FAILED TO CREATE SCOPED TMP DIR ON XPS-AGENT"; exit 1; }
 
@@ -155,6 +167,7 @@ echo "All three volumes transferred and checksum-verified on xps-agent."
 ```
 
 ### Step 7: Resume containers on desktop-agent (rollback copy)
+
 **What**: Only now — after the transfer and checksum verification in Step 6 have succeeded on xps-agent — restart the three containers on desktop-agent to maintain the live rollback instance through the 7-day rollback window (AC14). Resuming any earlier (immediately after export, before the transfer completes) would risk desktop-agent writing new data during the multi-minute transfer, making the already-checksummed xps-agent snapshot stale by the time it lands. This intentionally means slightly longer desktop-agent downtime, acceptable for this low-stakes, sub-20KB, internal-only instance, in exchange for a guaranteed-consistent snapshot. Desktop-agent data and volumes are never touched after this point.
 **Files**: None.
 **Test**: `ssh desktop-agent "cd /opt/docker/nba-app/nba-infra && sudo -u nba-app docker compose -p nba-infra -f docker-compose.desktop.yml --project-directory /opt/docker/nba-app ps"` shows all three containers in `Up` or `running` state.
@@ -162,6 +175,7 @@ echo "All three volumes transferred and checksum-verified on xps-agent."
 **Parallelizable**: No (must not run until Step 6's transfer and checksum verification succeed — resuming earlier risks a stale, inconsistent snapshot).
 
 **Command**:
+
 ```bash
 ssh desktop-agent "cd /opt/docker/nba-app/nba-infra && sudo -u nba-app docker compose -p nba-infra -f docker-compose.desktop.yml --project-directory /opt/docker/nba-app up -d" \
   || { echo "RESUME FAILED"; exit 1; }
@@ -173,6 +187,7 @@ echo "desktop-agent containers resumed; rollback instance live."
 ```
 
 ### Step 8: Create named volumes and extract tars on xps-agent
+
 **What**: Create three empty named volumes on xps-agent with exact names (nba-infra_go-data, nba-infra_predictor-data-cache, nba-infra_predictor-artifacts), extract the tar contents into them via throwaway alpine containers, and verify the extraction wasn't truncated or corrupted by comparing the extracted file count against the source count recorded in Step 5. This must happen before the first `docker compose up -d`, so Compose attaches to pre-populated volumes instead of creating empty ones.
 **Files**: None.
 **Test**: `ssh xps-agent "sudo docker volume ls"` lists the three volumes by exact name. `ssh xps-agent "sudo docker volume inspect nba-infra_go-data"` returns a valid JSON volume object. Extracted file counts match the recorded source counts for all three volumes.
@@ -180,6 +195,7 @@ echo "desktop-agent containers resumed; rollback instance live."
 **Parallelizable**: No.
 
 **Commands**:
+
 ```bash
 for VOL in nba-infra_go-data nba-infra_predictor-data-cache nba-infra_predictor-artifacts; do
   ssh xps-agent "sudo docker volume create ${VOL}" || { echo "VOLUME CREATE FAILED: ${VOL}"; exit 1; }
@@ -197,6 +213,7 @@ echo "All three volumes created, extracted, and verified on xps-agent."
 ```
 
 ### Step 9: [OPERATOR-ONLY] Verify and transfer .env file
+
 **What**: Confirm the live location and contents of the .env file on desktop-agent (FR6: verify against actual running state, not a stale doc), then transfer it to xps-agent via a single direct SSH-to-SSH pipe that the operator runs once — the secret value (BALLDONTLIE_API_KEY and related) is never displayed, copy-pasted between panes, or otherwise exposed to a session log or agent transcript.
 **Files**: None.
 **Test**: `.env` file exists at `/opt/docker/nba-app/.env` on xps-agent with permissions `600`; `ssh xps-agent "sudo grep -c '^BALLDONTLIE_API_KEY=' /opt/docker/nba-app/.env"` returns `1` (variable present). All ~10 expected variable names are confirmed present by name-only grep (values never checked by agent).
@@ -204,18 +221,23 @@ echo "All three volumes created, extracted, and verified on xps-agent."
 **Parallelizable**: No (must be operator-attended; not scriptable by an agent).
 
 **Operator instructions** (run by hand at the terminal, not via tool):
+
 1. Confirm the live .env on desktop-agent:
+
    ```bash
    ssh desktop-agent "sudo test -f /opt/docker/nba-app/.env && sudo wc -l /opt/docker/nba-app/.env"
    ```
+
    Expect output: `~10 /opt/docker/nba-app/.env` (exact line count confirms the file exists and matches expected structure).
 
 2. Transfer the file directly, host to host, in a single pipe — the value never lands on the operator's screen or clipboard:
+
    ```bash
    ssh desktop-agent "sudo cat /opt/docker/nba-app/.env" | ssh xps-agent "sudo -u nba-app tee /opt/docker/nba-app/.env >/dev/null"
    ```
 
 3. Fix permissions:
+
    ```bash
    ssh xps-agent "sudo chmod 600 /opt/docker/nba-app/.env"
    ```
@@ -223,6 +245,7 @@ echo "All three volumes created, extracted, and verified on xps-agent."
 4. Do not run any `cat`, `curl`, `echo`, or other command that prints the .env file's contents in any agent tool or transcript.
 
 ### Step 10: Verify .env variables on xps-agent
+
 **What**: Confirm all ~10 expected environment variable names are present in the .env file on xps-agent, by name only (values never printed by agent), and additionally compare a whole-file sha256sum between desktop-agent and xps-agent to catch a transcription error that preserves variable count/names but corrupts a value — the hash comparison never prints file contents.
 **Files**: None.
 **Test**: Each variable name found in the file via `grep -c '^<VAR>='`. Expected count: 10 total, 1 for each variable. Whole-file sha256sum matches between hosts.
@@ -230,6 +253,7 @@ echo "All three volumes created, extracted, and verified on xps-agent."
 **Parallelizable**: No.
 
 **Commands**:
+
 ```bash
 for VAR in BALLDONTLIE_API_KEY NODE_ENV API_PORT GAMES_SERVICE_URL PREDICTOR_SERVICE_URL GO_FEED_PORT PROVIDER BALLDONTLIE_BASE_URL BALLDONTLIE_TIMEZONE PREDICTOR_PORT; do
   COUNT=$(ssh xps-agent "sudo grep -c '^${VAR}=' /opt/docker/nba-app/.env")
@@ -245,9 +269,11 @@ echo ".env whole-file hash matches between desktop-agent and xps-agent."
 ```
 
 ### Step 11: Start containers on xps-agent
+
 **What**: Invoke `docker compose` from inside the nba-infra checkout on xps-agent (not with `--project-directory`), bringing up api, go-feed, and predictor in detached mode. Compose will attach to the three pre-populated named volumes and use `--env-file` for runtime configuration.
 
 **Corrected live during execution — three real gaps, none caught by spec-challenge:**
+
 1. `nba-app`'s `--no-create-home` breaks the local image build (this compose file builds on the host, unlike a pre-built-image deploy) — the build toolchain needs a writable `$HOME`. Fix: pass `HOME=/opt/docker/nba-app` explicitly (a directory `nba-app` already owns) rather than creating a real home directory.
 2. `--project-directory /opt/docker/nba-app` changes the base for *all* relative path resolution in the compose file, not just the project name — `../nba-data-service` resolved to the wrong parent directory. Fix: drop `--project-directory` entirely and run from inside the `nba-infra` checkout (the `cd` must happen as `nba-app`, wrapped inside `sudo -u nba-app bash -c '...'` — a plain `ssh ... "cd ... && sudo -u nba-app ..."` fails because the `cd` would run as the unprivileged SSH user before `sudo` ever applies).
 3. Dropping `--project-directory` also breaks `${BALLDONTLIE_API_KEY}`-style compose-level variable substitution, since Compose's implicit `.env` discovery then looks in the compose file's own directory, not where `.env` actually lives (the parent directory). Fix: pass `--env-file /opt/docker/nba-app/.env` explicitly — independent of directory-based discovery entirely.
@@ -259,6 +285,7 @@ echo ".env whole-file hash matches between desktop-agent and xps-agent."
 **Parallelizable**: No.
 
 **Commands**:
+
 ```bash
 # Prerequisite: copy the prebuilt api/dist from an already-working instance (Node/Nx tooling not required on the target host).
 ssh desktop-agent "sudo -u nba-app tar czf - -C /opt/docker/nba-app/nba-analytics-hub/api dist" \
@@ -268,6 +295,7 @@ ssh xps-agent "sudo -u nba-app bash -c 'cd /opt/docker/nba-app/nba-infra && HOME
 ```
 
 ### Step 12: Verify containers stable for 10 minutes
+
 **What**: Poll all three containers every 60 seconds across a full 10-minute window and confirm none exit the running state or accumulate a restart, per FR16 / AC9. Halts immediately with a clear failure message on the first check that detects a problem, rather than sleeping once and declaring victory.
 **Files**: None.
 **Test**: Over 10 checks spaced 60 seconds apart, `docker inspect -f '{{.State.Status}}'` reports `running` and `{{.RestartCount}}` stays equal to the baseline captured right after startup, for all three containers, every time.
@@ -275,6 +303,7 @@ ssh xps-agent "sudo -u nba-app bash -c 'cd /opt/docker/nba-app/nba-infra && HOME
 **Parallelizable**: No.
 
 **Commands**:
+
 ```bash
 PROJECT_NAME=nba-infra
 CONTAINERS=(api go-feed predictor)
@@ -305,6 +334,7 @@ echo "All containers stable for the full 10-minute window."
 ```
 
 ### Step 13: Verify api reachable on port 3020
+
 **What**: Confirm the api service responds on xps-agent host port 3020 (mapped to container port 3000), matching FR11 / AC6. A basic health or API endpoint call is sufficient.
 **Files**: None.
 **Test**: `curl -s http://xps-agent:3020/` or similar endpoint returns an HTTP response (not connection refused or timeout). Check response code (200 or similar), not specific payload.
@@ -312,6 +342,7 @@ echo "All containers stable for the full 10-minute window."
 **Parallelizable**: No.
 
 **Command**:
+
 ```bash
 # From the operator's machine or a test runner with network reach to xps-agent:3020.
 curl -v http://xps-agent:3020/ 2>&1 | head -20
@@ -319,6 +350,7 @@ curl -v http://xps-agent:3020/ 2>&1 | head -20
 ```
 
 ### Step 14: Verify service dependencies and network connectivity
+
 **What**: Confirm api reaches go-feed and predictor over the Docker-managed internal network at their actual confirmed ports (go-feed listens on 4000 internally, predictor on 5000), and confirm neither go-feed nor predictor has a host port mapping — they should be reachable only inside the Docker network, per FR12 / AC7.
 **Files**: None.
 **Test**: Exec into api container reaches `http://go-feed:4000/` and `http://predictor:5000/` with a non-error HTTP status. `docker port` shows no mapping for either go-feed or predictor.
@@ -326,6 +358,7 @@ curl -v http://xps-agent:3020/ 2>&1 | head -20
 **Parallelizable**: No.
 
 **Commands**:
+
 ```bash
 # Exec into api container and test internal network reach to go-feed and predictor at their real ports.
 ssh xps-agent "sudo docker exec nba-infra-api-1 curl -s -o /dev/null -w '%{http_code}' http://go-feed:4000/"
@@ -341,6 +374,7 @@ echo "go-feed and predictor confirmed internal-network-only (no host port mappin
 ```
 
 ### Step 15: Verify data files present in containers
+
 **What**: Exec into each container and confirm expected config and data files exist at the paths the container actually reads from (not just confirmed synced to the host), and that the file count matches what was recorded from the source volume during Step 5 — not merely that a listing command exited 0, which is also true for an empty directory. Spot-check go-feed's `/app/data` and predictor's `/work/data_cache` and `/work/artifacts`, per FR17 / AC10.
 **Files**: None.
 **Test**: For each mount, the file count found inside the running container is greater than zero and equal to the count recorded for the corresponding source volume in `/tmp/nba-migrate-${MIGRATION_TAG}/source-filecounts.txt`.
@@ -348,6 +382,7 @@ echo "go-feed and predictor confirmed internal-network-only (no host port mappin
 **Parallelizable**: No.
 
 **Commands**:
+
 ```bash
 # Reuse the MIGRATION_TAG value set in Step 4 (export MIGRATION_TAG=<value> again if this runs in a new shell).
 declare -A MOUNT_MAP=(
@@ -373,6 +408,7 @@ echo "All data files verified present inside containers; counts match source vol
 ```
 
 ### Step 16: Verify go-feed container runs as uid 0
+
 **What**: Confirm go-feed container on xps-agent runs under uid 0 (root), required for volume write permissions and matching desktop-agent, per FR13 / AC8.
 **Files**: None.
 **Test**: `ssh xps-agent "sudo docker inspect nba-infra-go-feed-1 -f '{{.Config.User}}'"` returns empty string or "0"; `ssh xps-agent "sudo docker exec nba-infra-go-feed-1 id"` shows `uid=0`.
@@ -380,6 +416,7 @@ echo "All data files verified present inside containers; counts match source vol
 **Parallelizable**: No.
 
 **Commands**:
+
 ```bash
 # Check the container's configured user (should be empty or "0" for root).
 USER=$(ssh xps-agent "sudo docker inspect nba-infra-go-feed-1 -f '{{.Config.User}}'")
@@ -394,6 +431,7 @@ echo "go-feed verified running as uid 0."
 ```
 
 ### Step 17: Verify runtime configuration compliance
+
 **What**: Confirm each of the three containers on xps-agent is actually governed by the `restart: unless-stopped` policy (not just declared in the compose file), that no VPN/egress-tunnel network (e.g. a `gluetun`-style attachment) is attached to any of them, and that no systemd unit, cron job, or wrapper script was separately added to manage this instance — it relies solely on Docker's restart policy, not host-level scheduling, per FR14 / AC15.
 **Files**: None.
 **Test**: `docker inspect --format '{{.HostConfig.RestartPolicy.Name}}'` returns `unless-stopped` for all three containers; `docker inspect --format '{{json .NetworkSettings.Networks}}'` shows only the expected compose-managed network for all three; `systemctl list-units` and `crontab -l` show no NBA-related entries.
@@ -401,6 +439,7 @@ echo "go-feed verified running as uid 0."
 **Parallelizable**: Yes.
 
 **Commands**:
+
 ```bash
 # Restart policy check.
 for CONTAINER in nba-infra-api-1 nba-infra-go-feed-1 nba-infra-predictor-1; do
@@ -437,10 +476,12 @@ echo "Runtime configuration compliant: restart policy correct, no VPN network at
 - **Steps 9–10 (.env)**: If .env contents are incorrect after transfer, re-run Step 9 (operator re-runs the direct SSH-to-SSH pipe).
 - **Steps 11–17 (verification)**: If container startup or verification fails, stop containers on xps-agent (`ssh xps-agent "sudo -u nba-app bash -c 'cd /opt/docker/nba-app/nba-infra && docker compose -p nba-infra -f docker-compose.desktop.yml stop'"`), review logs, fix the issue, and re-run from Step 11. Desktop-agent remains the live instance until this step completes successfully.
 - **Full rollback** (before end of 7-day window): Remain on desktop-agent as the live instance. Stop the xps-agent containers BEFORE removing any state underneath them, then remove the directory, volumes, and service account:
+
   ```bash
   ssh xps-agent "sudo -u nba-app bash -c 'cd /opt/docker/nba-app/nba-infra && docker compose -p nba-infra -f docker-compose.desktop.yml stop'"
   ssh xps-agent "sudo rm -rf /opt/docker/nba-app"
   ssh xps-agent "sudo docker volume rm nba-infra_go-data nba-infra_predictor-data-cache nba-infra_predictor-artifacts"
   ssh xps-agent "sudo userdel nba-app"
   ```
+
   Desktop-agent's containers stay running with no manual intervention.

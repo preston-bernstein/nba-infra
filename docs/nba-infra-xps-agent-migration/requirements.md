@@ -1,9 +1,11 @@
 # Requirements: nba-infra Desktop-Agent-to-XPS-Agent Migration
 
 ## Problem statement
+
 nba-infra runs a desktop-only instance of the NBA stack on the `desktop-agent` host, started by a manual `docker compose` command and defined in `docker-compose.desktop.yml`. This instance must move to the `xps-agent` host. Preston needs the three running services, their data, and their configuration to keep working on the new host, with no changes to the production deployment on the DigitalOcean droplet (`nba-api.prestonbernstein.com`) and no changes to any application's source code. This move follows the same pattern used for a prior migration (fashion-monitor) between the same two hosts, which found real gaps — wrong assumed file paths, and a container that crash-looped because a config file didn't land where it expected. This document sets requirements to avoid repeating those gaps.
 
 ## Users / stakeholders
+
 - Preston Bernstein — owns the migration, runs every step, holds SSH access to both hosts.
 - desktop-agent host — current runtime for the instance being migrated; keeps a rollback copy after cutover.
 - xps-agent host — new runtime for the instance.
@@ -41,12 +43,14 @@ nba-infra runs a desktop-only instance of the NBA stack on the `desktop-agent` h
 26. The system shall verify the actual live Docker volume names and container names on desktop-agent before relying on them elsewhere in this migration, rather than assuming values from this or any prior document. Live investigation confirmed: volume names are `nba-infra_go-data`, `nba-infra_predictor-data-cache`, `nba-infra_predictor-artifacts` (underscore-prefixed); container names are `nba-infra-api-1`, `nba-infra-go-feed-1`, `nba-infra-predictor-1` (hyphen-separated, Docker Compose v2's naming convention, not the older v1 underscore style). This verification shall be re-run and reconciled against actual live state during implementation, in case desktop-agent's state has changed since this document was written.
 
 ## Non-functional requirements
+
 - Combined size of the three migrated volumes is small (under 20KB today); the migration procedure must still checksum-verify every byte, not rely on the small size to skip verification.
 - The `.env` file transfer must never appear in any agent-readable log, transcript, or tool output — operator-run only, per this fleet's secrets-handling convention.
 - The migration must be reversible: desktop-agent's containers, volumes, and `.env` file remain intact and startable until the rollback window ends.
 - No new host-level scheduling (systemd, cron) is introduced; the instance's availability after a reboot depends only on Docker's own `restart: unless-stopped` policy, matching desktop-agent.
 
 ## Constraints
+
 - This migration is a configuration and deployment-target change only — same service topology (three services, three volumes, one `.env` file), different host. It is explicitly NOT an architectural change, per nba-infra's own stated philosophy that "deployment mode changes configuration, not architecture."
 - Must not touch `docker-compose.prod.yml`, the production/VPS section of `DEPLOYMENT.md`, the `Caddyfile`, or anything tied to the DigitalOcean droplet at `nba-api.prestonbernstein.com`.
 - Must not add application source code or change domain models or API contracts in `nba-analytics-hub`, `nba-data-service`, or `nba-predictor` — this migration touches only deployment and orchestration surfaces (compose files, `.env`, host-side setup).
@@ -58,6 +62,7 @@ nba-infra runs a desktop-only instance of the NBA stack on the `desktop-agent` h
 - Docker Engine and the Docker Compose v2 plugin are required on xps-agent before this migration can proceed; live investigation has already confirmed both are present and functional on xps-agent, so this is a confirmed prerequisite, not an open risk.
 
 ## Out of scope
+
 - Any change to the production DigitalOcean droplet deployment, `docker-compose.prod.yml`, the production section of `DEPLOYMENT.md`, or the `Caddyfile`.
 - Any change to application source code, domain models, or API contracts in `nba-analytics-hub`, `nba-data-service`, or `nba-predictor`.
 - Adding a systemd unit, cron job, or wrapper script to manage the instance on xps-agent — the instance continues to rely on Docker's `restart: unless-stopped` policy only, matching desktop-agent.
@@ -67,6 +72,7 @@ nba-infra runs a desktop-only instance of the NBA stack on the `desktop-agent` h
 - Decommissioning or deleting desktop-agent's copy of the instance — that happens only after the rollback window ends, and is a separate action from this migration.
 
 ## Acceptance criteria
+
 1. An `nba-app` service user exists on xps-agent, created by an idempotent `useradd`-style step with no pinned UID.
 2. `/opt/docker/nba-app/` exists on xps-agent, owned by `nba-app`, containing the four sibling repo checkouts (`nba-infra`, `nba-analytics-hub`, `nba-data-service`, `nba-predictor`).
 3. Each of the three named volumes (`go-data`, `predictor-data-cache`, `predictor-artifacts`) exists on xps-agent with contents that checksum-match the corresponding volume on desktop-agent at the time of export.
