@@ -2,33 +2,38 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
 jobs:
-  lint:
+  ci:
+    uses: preston-bernstein/ci-workflows/.github/workflows/shell.yml@v1
+    with:
+      shellcheck-paths: scripts
+      checks: |
+        if [ -d ../nba-analytics-hub/api ] && [ -d ../nba-data-service ] && [ -d ../nba-predictor ]; then docker compose -f docker-compose.yml config >/dev/null && docker compose -f docker-compose.yml -f docker-compose.prod.yml config >/dev/null; else echo "Skipping compose config; sibling repos not present."; fi
+
+  markdown:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - name: Validate compose files
-        run: |
-          if [ -d ../nba-analytics-hub/api ] && [ -d ../nba-data-service ] && [ -d ../nba-predictor ]; then
-            docker compose -f docker-compose.yml config >/dev/null
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml config >/dev/null
-          else
-            echo "Skipping docker compose config; sibling repos not present."
-          fi
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
-      - name: Shellcheck scripts
-        run: shellcheck scripts/*.sh
-      - name: Markdown lint
-        uses: DavidAnson/markdownlint-cli2-action@v16
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
         with:
           config: .markdownlint.yml
           globs: |
             **/*.md
+
+  workflows:
+    uses: preston-bernstein/ci-workflows/.github/workflows/actions-lint.yml@v1
