@@ -80,7 +80,7 @@ set -e
 assert_exit "a real RFC1918 address (10.55.66.77) is caught" 1 "$rc"
 
 # 172.16-31.x.x and 192.168.x.x variants
-for ip in "172.16.5.9" "172.31.0.1" "lan.example.internal"; do
+for ip in "172.16.5.9" "172.31.0.1" "192.168.4.20"; do
   IP_REPO="$WORKDIR/bad-ip-$ip"
   new_fixture_repo "$IP_REPO"
   (
