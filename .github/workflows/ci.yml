@@ -37,3 +37,17 @@ jobs:
 
   workflows:
     uses: preston-bernstein/ci-workflows/.github/workflows/actions-lint.yml@v1
+
+  opsec-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Self-test the leaked-host guard (fail-to-pass proof)
+        run: ./scripts/test-check-no-leaked-hosts.sh
+      - name: Check for real LAN IPs / host aliases in tracked files
+        env:
+          OPSEC_FORBIDDEN_LITERALS: ${{ secrets.OPSEC_FORBIDDEN_LITERALS }}
+        run: ./scripts/check-no-leaked-hosts.sh
