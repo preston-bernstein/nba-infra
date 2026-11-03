@@ -22,7 +22,7 @@ Compose services: `kafka`, `kafka-init`, `predictor-consumer` (runs `python -m s
 ## Topics
 
 | Topic | Partitions | Key | Producer | Consumers (group) |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `game.updated` | 3 | game id | `nba-data-service` | `bff`, `predictor` |
 | `game.updated.dlq` | 1 | original key | the consumer that failed | none (inspect by hand) |
 
