@@ -14,6 +14,21 @@ Infra glue for the NBA stack. Tracks Compose, proxy, env templates, and ops docs
 - Go feed and Python predictor stay private on the Docker network.
 - Frontend stays static on its host.
 
+## Event backbone (Kafka)
+
+A single-broker Kafka (KRaft, no ZooKeeper) carries `game.updated` events. The Go service publishes them. The Node API and the Python predictor each read them in their own consumer group. Bad messages go to a dead-letter topic.
+
+```mermaid
+flowchart LR
+  G[go-feed<br/>Go poller] -- "game.updated<br/>key = game id, 3 partitions" --> K[(kafka)]
+  K -- group bff --> B[api<br/>read model + SSE]
+  K -- group predictor --> P[predictor-consumer<br/>prediction ledger]
+  B -. bad message .-> D[(game.updated.dlq)]
+  P -. bad message .-> D
+```
+
+The event schema, the DLQ format, how to inspect lag, how to reset offsets, a real lag capture, and what this setup does not cover are in [kafka/README.md](kafka/README.md). Notes for interviews are in [kafka/NOTES.md](kafka/NOTES.md).
+
 ## How to work
 
 - Keep configs explicit: ports, service names, env vars.
