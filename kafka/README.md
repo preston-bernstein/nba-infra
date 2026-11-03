@@ -81,7 +81,7 @@ predictor       game.updated    2          1               1               0
 docker compose -f docker-compose.desktop.yml -f docker-compose.kafka.yml up -d --build
 ```
 
-It adds `kafka`, `kafka-init`, and `predictor-consumer`, and sets `KAFKA_BROKERS` on `api` and `go-feed`. No Kafka port is published on the host. Kafka data lives in the `kafka-data` volume. To turn Kafka off, run the desktop file alone.
+Sibling repos are found under `REPOS_DIR` (default `..`). If they sit next to the live compose file, set `REPOS_DIR=.`. It adds `kafka`, `kafka-init`, and `predictor-consumer`, and sets `KAFKA_BROKERS` on `api` and `go-feed`. No Kafka port is published on the host. Kafka data lives in the `kafka-data` volume. To turn Kafka off, run the desktop file alone.
 
 ## Not covered
 

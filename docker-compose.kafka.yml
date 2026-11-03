@@ -1,6 +1,9 @@
 # Kafka layer for the desktop instance. Use it on top of docker-compose.desktop.yml:
 #   docker compose -f docker-compose.desktop.yml -f docker-compose.kafka.yml up -d --build
 # docker-compose.desktop.yml is not changed. Nothing is published on the host.
+# Sibling repos are found under REPOS_DIR (default ..). On a host where the repos sit
+# next to the live compose file, run from that folder with REPOS_DIR=. and
+#   docker compose -f docker-compose.yml -f nba-infra/docker-compose.kafka.yml up -d --build
 services:
   api:
     environment:
@@ -18,7 +21,7 @@ services:
 
   predictor-consumer:
     build:
-      context: ../nba-predictor
+      context: ${REPOS_DIR:-..}/nba-predictor
       dockerfile: Dockerfile.dev
     environment:
       NBA_DATA_DIR: /work/data_cache
