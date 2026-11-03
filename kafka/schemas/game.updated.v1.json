@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "game.updated.v1",
+  "title": "game.updated v1",
+  "type": "object",
+  "required": ["eventId", "eventType", "schemaVersion", "occurredAt", "changeKind", "game"],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "game.updated" },
+    "schemaVersion": { "const": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "changeKind": { "enum": ["created", "status", "score"] },
+    "game": {
+      "type": "object",
+      "required": ["id", "provider", "homeTeam", "awayTeam", "startTime", "status", "statusKind", "score"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string" },
+        "homeTeam": { "$ref": "#/$defs/team" },
+        "awayTeam": { "$ref": "#/$defs/team" },
+        "startTime": { "type": "string" },
+        "status": { "type": "string" },
+        "statusKind": { "enum": ["SCHEDULED", "IN_PROGRESS", "FINAL", "POSTPONED", "CANCELED"] },
+        "score": {
+          "type": "object",
+          "required": ["home", "away"],
+          "properties": { "home": { "type": "integer" }, "away": { "type": "integer" } }
+        },
+        "meta": { "type": "object" }
+      }
+    }
+  },
+  "$defs": {
+    "team": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": { "id": { "type": "string" }, "name": { "type": "string" } }
+    }
+  }
+}

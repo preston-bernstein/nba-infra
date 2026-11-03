@@ -17,9 +17,11 @@ services:
       PORT: 3000
       GAMES_SERVICE_URL: http://go-feed:4000
       PREDICTOR_SERVICE_URL: http://predictor:5000
+      KAFKA_BROKERS: kafka:9092
     depends_on:
       - go-feed
       - predictor
+      - kafka
     expose:
       - "3000"
 
@@ -34,6 +36,10 @@ services:
       BALLDONTLIE_BASE_URL: ${BALLDONTLIE_BASE_URL:-https://api.balldontlie.io/v1}
       BALLDONTLIE_API_KEY: ${BALLDONTLIE_API_KEY}
       BALLDONTLIE_TIMEZONE: ${BALLDONTLIE_TIMEZONE:-America/New_York}
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
     user: "0"
     volumes:
       - go-data:/app/data
@@ -48,6 +54,10 @@ services:
       PORT: 5000
       NBA_DATA_DIR: /work/data_cache
       NBA_ART_DIR: /work/artifacts
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
     volumes:
       - ../internal-prediction-service/data_cache:/work/data_cache
       - ../internal-prediction-service/artifacts:/work/artifacts
@@ -55,5 +65,64 @@ services:
     expose:
       - "5000"
 
+  predictor-consumer:
+    build:
+      context: ../nba-predictor
+      dockerfile: Dockerfile.dev
+    environment:
+      NBA_DATA_DIR: /work/data_cache
+      NBA_ART_DIR: /work/artifacts
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    volumes:
+      - ../nba-predictor/data_cache:/work/data_cache
+      - ../nba-predictor/artifacts:/work/artifacts
+    command: ["python", "-m", "src.events.consumer"]
+    restart: unless-stopped
+
+  kafka:
+    image: apache/kafka:3.8.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "127.0.0.1:29092:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+    restart: unless-stopped
+
+  kafka-init:
+    image: apache/kafka:3.8.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        T=/opt/kafka/bin/kafka-topics.sh
+        $$T --bootstrap-server kafka:9092 --create --if-not-exists --topic game.updated --partitions 3 --replication-factor 1
+        $$T --bootstrap-server kafka:9092 --create --if-not-exists --topic game.updated.dlq --partitions 1 --replication-factor 1
+        $$T --bootstrap-server kafka:9092 --list
+
 volumes:
   go-data:
+  kafka-data:
