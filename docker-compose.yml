@@ -48,7 +48,7 @@ services:
 
   predictor:
     build:
-      context: ../internal-prediction-service
+      context: ../nba-predictor
       dockerfile: Dockerfile.dev
     environment:
       PORT: 5000
@@ -59,8 +59,8 @@ services:
       kafka-init:
         condition: service_completed_successfully
     volumes:
-      - ../internal-prediction-service/data_cache:/work/data_cache
-      - ../internal-prediction-service/artifacts:/work/artifacts
+      - ../nba-predictor/data_cache:/work/data_cache
+      - ../nba-predictor/artifacts:/work/artifacts
     command: ["uvicorn", "src.service.app:app", "--host", "0.0.0.0", "--port", "5000"]
     expose:
       - "5000"
