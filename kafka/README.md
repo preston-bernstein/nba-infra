@@ -73,6 +73,16 @@ predictor       game.updated    1          -               0               -
 predictor       game.updated    2          1               1               0
 ```
 
+## Desktop
+
+`docker-compose.kafka.yml` layers Kafka onto the desktop instance without changing `docker-compose.desktop.yml`:
+
+```sh
+docker compose -f docker-compose.desktop.yml -f docker-compose.kafka.yml up -d --build
+```
+
+It adds `kafka`, `kafka-init`, and `predictor-consumer`, and sets `KAFKA_BROKERS` on `api` and `go-feed`. No Kafka port is published on the host. Kafka data lives in the `kafka-data` volume. To turn Kafka off, run the desktop file alone.
+
 ## Not covered
 
 One broker, replication factor 1, no auth, no TLS. This is not a production cluster.
