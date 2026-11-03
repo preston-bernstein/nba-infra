@@ -30,7 +30,7 @@ Infra glue for the NBA stack. Tracks Compose, proxy, env templates, and ops docs
 ## Files
 
 - `docker-compose.yml` (local; also the shared base for prod), `docker-compose.prod.yml` (VPS/prod override — invoke together: `docker compose -f docker-compose.yml -f docker-compose.prod.yml ...`)
-- `.env.example` (no secrets)
+- `kafka/` (event contract, JSON Schema, notes), `.env.example` (no secrets)
 - `Caddyfile` (local `:80`, plus `DOMAIN`-based HTTPS in prod — mounted into `docker-compose.prod.yml`)
 - `scripts/` (`up.sh`, `down.sh`, `logs.sh`, `deploy-vps.sh`, `check-no-leaked-hosts.sh`)
 - `scripts/check-no-leaked-hosts.sh` fails if a literal private-range (RFC 1918) IPv4 address shows up in a tracked file. Set `OPSEC_FORBIDDEN_LITERALS` (comma-separated) to also ban specific real host aliases — unset by default, so this stays green on forks. Self-tested by `scripts/test-check-no-leaked-hosts.sh`; both run in CI.
