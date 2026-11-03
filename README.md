@@ -14,6 +14,21 @@ Infra glue for the NBA stack. Tracks Compose, proxy, env templates, and ops docs
 - Go feed and Python predictor stay private on the Docker network.
 - Frontend stays static on its host.
 
+## Event backbone (Kafka)
+
+A single-broker Kafka (KRaft, no ZooKeeper) carries `game.updated` events. The Go service publishes them. The Node API and the Python predictor each read them in their own consumer group. Bad messages go to a dead-letter topic.
+
+```mermaid
+flowchart LR
+  G[go-feed<br/>Go poller] -- "game.updated<br/>key = game id, 3 partitions" --> K[(kafka)]
+  K -- group bff --> B[api<br/>read model + SSE]
+  K -- group predictor --> P[predictor-consumer<br/>prediction ledger]
+  B -. bad message .-> D[(game.updated.dlq)]
+  P -. bad message .-> D
+```
+
+The event schema, the DLQ format, how to inspect lag, how to reset offsets, a real lag capture, and what this setup does not cover are in [kafka/README.md](kafka/README.md). Notes for interviews are in [kafka/NOTES.md](kafka/NOTES.md).
+
 ## How to work
 
 - Keep configs explicit: ports, service names, env vars.
@@ -30,11 +45,11 @@ Infra glue for the NBA stack. Tracks Compose, proxy, env templates, and ops docs
 ## Files
 
 - `docker-compose.yml` (local; also the shared base for prod), `docker-compose.prod.yml` (VPS/prod override — invoke together: `docker compose -f docker-compose.yml -f docker-compose.prod.yml ...`)
-- `.env.example` (no secrets)
+- `kafka/` (event contract, JSON Schema, notes), `.env.example` (no secrets)
 - `Caddyfile` (local `:80`, plus `DOMAIN`-based HTTPS in prod — mounted into `docker-compose.prod.yml`)
 - `scripts/` (`up.sh`, `down.sh`, `logs.sh`, `deploy-vps.sh`, `check-no-leaked-hosts.sh`)
 - `scripts/check-no-leaked-hosts.sh` fails if a literal private-range (RFC 1918) IPv4 address shows up in a tracked file. Set `OPSEC_FORBIDDEN_LITERALS` (comma-separated) to also ban specific real host aliases — unset by default, so this stays green on forks. Self-tested by `scripts/test-check-no-leaked-hosts.sh`; both run in CI.
 - `DEPLOYMENT.md`, `ROADMAP.md`, `LICENSE`, `CODEOWNERS`
-- Repos: Node API `../nba-analytics-hub/api` (Dockerfile), Go feed `../nba-data-service` (Dockerfile), Predictor `../internal-prediction-service` (Dockerfile.dev)
+- Repos: Node API `../nba-analytics-hub/api` (Dockerfile), Go feed `../nba-data-service` (Dockerfile), Predictor `../nba-predictor` (Dockerfile.dev)
 - Volumes: Go snapshots use named volume `go-data` at `/app/data` and run as root; predictor prod uses cache/artifact volumes.
 - Predictor: Compose runs uvicorn (`src.service.app:app` on 5000). Keep the command in sync with the predictor repo if it changes.

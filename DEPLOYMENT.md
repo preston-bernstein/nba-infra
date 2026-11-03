@@ -5,7 +5,7 @@ Public-facing notes for running the stack.
 ## Local integration
 
 - Target topology: proxy -> Node API (`/api/*`) -> private Go/Python services on the Docker network.
-- Compose: `docker-compose.yml` builds from sibling repos (`../nba-analytics-hub/api` for Node API, `../nba-data-service` for Go feed, `../internal-prediction-service` for Python predictor).
+- Compose: `docker-compose.yml` builds from sibling repos (`../nba-analytics-hub/api` for Node API, `../nba-data-service` for Go feed, `../nba-predictor` for Python predictor).
 - `scripts/up.sh` builds `api/dist` when missing. It runs `npx nx docker:build @nba-analytics-hub/api --skip-nx-cache` in `../nba-analytics-hub` with `NX_ISOLATE_PLUGINS=false` and `NX_DAEMON=false`. Use Node 20 and ensure `api/package.json` includes runtime deps (`@nba-analytics-hub/data-access`, `@nba-analytics-hub/testing`).
 - `scripts/up.sh` runs `npx nx reset` and retries once if the API build fails.
 - `scripts/up.sh` regenerates `api/dist/package-lock.json` when missing or identical to the root lockfile. Set `SKIP_LOCKFILE_FIX=1` to skip.
@@ -45,12 +45,12 @@ The predictor needs training data and model artifacts. On first deploy, copy the
 
 ```bash
 # Copy data from local machine to server
-scp -r /path/to/internal-prediction-service/data_cache user@<YOUR_SERVER_IP>:/opt/internal-prediction-service/
-scp -r /path/to/internal-prediction-service/artifacts user@<YOUR_SERVER_IP>:/opt/internal-prediction-service/
+scp -r /path/to/nba-predictor/data_cache user@<YOUR_SERVER_IP>:/opt/nba-predictor/
+scp -r /path/to/nba-predictor/artifacts user@<YOUR_SERVER_IP>:/opt/nba-predictor/
 
 # Copy into running container
-ssh user@<YOUR_SERVER_IP> "docker cp /opt/internal-prediction-service/data_cache/. nba-infra-predictor-1:/work/data_cache/"
-ssh user@<YOUR_SERVER_IP> "docker cp /opt/internal-prediction-service/artifacts/. nba-infra-predictor-1:/work/artifacts/"
+ssh user@<YOUR_SERVER_IP> "docker cp /opt/nba-predictor/data_cache/. nba-infra-predictor-1:/work/data_cache/"
+ssh user@<YOUR_SERVER_IP> "docker cp /opt/nba-predictor/artifacts/. nba-infra-predictor-1:/work/artifacts/"
 ```
 
 Required files:
