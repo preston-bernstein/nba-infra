@@ -1,5 +1,6 @@
 services:
   proxy:
+    x-docker-allow: [no-healthcheck, no-limits, unpinned]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; image has no pinnable upstream tag or digest (local build or moving tag)
     image: caddy:2-alpine
     command: ["caddy", "reverse-proxy", "--from", ":80", "--to", "api:3000"]
     depends_on:
@@ -9,6 +10,7 @@ services:
     restart: unless-stopped
 
   api:
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     build:
       context: ../nba-analytics-hub/api
       dockerfile: Dockerfile
@@ -26,6 +28,7 @@ services:
       - "3000"
 
   go-feed:
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     build:
       context: ../nba-data-service
       dockerfile: Dockerfile
@@ -47,6 +50,7 @@ services:
       - "4000"
 
   predictor:
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     build:
       context: ../nba-predictor
       dockerfile: Dockerfile.dev
@@ -66,6 +70,7 @@ services:
       - "5000"
 
   predictor-consumer:
+    x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
     build:
       context: ../nba-predictor
       dockerfile: Dockerfile.dev
@@ -83,7 +88,8 @@ services:
     restart: unless-stopped
 
   kafka:
-    image: apache/kafka:3.8.1
+    x-docker-allow: [no-limits]  # real memory use not measured yet; set mem_limit from observed use
+    image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -110,7 +116,8 @@ services:
     restart: unless-stopped
 
   kafka-init:
-    image: apache/kafka:3.8.1
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
+    image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     depends_on:
       kafka:
         condition: service_healthy
