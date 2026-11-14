@@ -1,0 +1,1 @@
+CORE_DUP_THRESHOLD=4  # existing duplication is 3.57%, from repeated compose service waivers; lower it as clones are removed
