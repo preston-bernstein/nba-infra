@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   ci:
-    uses: preston-bernstein/ci-workflows/.github/workflows/shell.yml@v1
+    uses: preston-bernstein/ci-workflows/.github/workflows/shell.yml@980585f4e9c3c1ef982cb934e153f925121fe0c0 # v1
     with:
       shellcheck-paths: scripts
       checks: |
@@ -36,7 +36,7 @@ jobs:
             **/*.md
 
   workflows:
-    uses: preston-bernstein/ci-workflows/.github/workflows/actions-lint.yml@v1
+    uses: preston-bernstein/ci-workflows/.github/workflows/actions-lint.yml@980585f4e9c3c1ef982cb934e153f925121fe0c0 # v1
 
   opsec-guard:
     runs-on: ubuntu-latest
