@@ -46,7 +46,7 @@ new_fixture_repo() {
 run_guard() {
   local dir="$1"
   shift
-  ( cd "$dir" && env "$@" bash "scripts/$(basename "$GUARD")" )
+  (cd "$dir" && env "$@" bash "scripts/$(basename "$GUARD")")
 }
 
 # --- Case 1: clean tree, no env set -> guard must PASS -----------------------
