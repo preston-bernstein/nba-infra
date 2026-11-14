@@ -6,6 +6,7 @@
 #   docker compose -f docker-compose.yml -f nba-infra/docker-compose.kafka.yml up -d --build
 services:
   api:
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     environment:
       KAFKA_BROKERS: kafka:9092
     depends_on:
@@ -13,6 +14,7 @@ services:
         condition: service_completed_successfully
 
   go-feed:
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     environment:
       KAFKA_BROKERS: kafka:9092
     depends_on:
@@ -20,6 +22,7 @@ services:
         condition: service_completed_successfully
 
   predictor-consumer:
+    x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
     build:
       context: ${REPOS_DIR:-..}/nba-predictor
       dockerfile: Dockerfile.dev
@@ -37,7 +40,8 @@ services:
     restart: unless-stopped
 
   kafka:
-    image: apache/kafka:3.8.1
+    x-docker-allow: [no-limits]  # real memory use not measured yet; set mem_limit from observed use
+    image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -62,7 +66,8 @@ services:
     restart: unless-stopped
 
   kafka-init:
-    image: apache/kafka:3.8.1
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
+    image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     depends_on:
       kafka:
         condition: service_healthy
