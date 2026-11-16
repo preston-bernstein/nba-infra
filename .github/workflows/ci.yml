@@ -35,8 +35,20 @@ jobs:
           globs: |
             **/*.md
 
-  workflows:
-    uses: preston-bernstein/ci-workflows/.github/workflows/actions-lint.yml@980585f4e9c3c1ef982cb934e153f925121fe0c0 # v1
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install the pinned gate tools
+        run: |
+          bash scripts/install-gate-tools.sh "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Run every gate (core, workflows, shell, docker, writing, logging)
+        run: bash scripts/run-gates.sh
 
   opsec-guard:
     runs-on: ubuntu-latest

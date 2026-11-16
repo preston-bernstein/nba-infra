@@ -1,5 +1,14 @@
+# Log rotation: Docker keeps container logs forever without it. Pack: logging, rule log-compose-rotation.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   proxy:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits, unpinned]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; image has no pinnable upstream tag or digest (local build or moving tag)
     image: caddy:2-alpine
     command: ["caddy", "reverse-proxy", "--from", ":80", "--to", "api:3000"]
@@ -10,6 +19,8 @@ services:
     restart: unless-stopped
 
   api:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     build:
       context: ../nba-analytics-hub/api
@@ -28,6 +39,8 @@ services:
       - "3000"
 
   go-feed:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     build:
       context: ../nba-data-service
@@ -50,6 +63,8 @@ services:
       - "4000"
 
   predictor:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     build:
       context: ../nba-predictor
@@ -70,6 +85,8 @@ services:
       - "5000"
 
   predictor-consumer:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
     build:
       context: ../nba-predictor
@@ -88,6 +105,8 @@ services:
     restart: unless-stopped
 
   kafka:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-limits]  # real memory use not measured yet; set mem_limit from observed use
     image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     environment:
@@ -116,6 +135,8 @@ services:
     restart: unless-stopped
 
   kafka-init:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     depends_on:

@@ -1,0 +1,2 @@
+scripts/*-check.py  # copied unchanged from the stack packs; edit the pack, not the copy
+scripts/core-lizard.py  # copied unchanged from the core pack
