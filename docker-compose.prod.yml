@@ -1,5 +1,14 @@
+# Log rotation: Docker keeps container logs forever without it. Pack: logging, rule log-compose-rotation.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   proxy:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     ports:
       - "443:443"
@@ -12,16 +21,22 @@ services:
     command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
 
   api:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
     environment:
       NODE_ENV: production
     restart: unless-stopped
 
   go-feed:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
     restart: unless-stopped
 
   predictor:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
     volumes:
       - ${PREDICTOR_DATA_CACHE:-predictor-data-cache}:/work/data_cache

@@ -1,0 +1,6 @@
+# Gate scripts are copied unchanged from the stack packs. A local edit would break the copy, so they skip shfmt and the rest.
+scripts/core-validate.sh vendored unchanged from the core pack
+scripts/gha-validate.sh vendored unchanged from the github-actions pack
+scripts/shell-validate.sh vendored unchanged from the shell pack
+scripts/docker-validate.sh vendored unchanged from the docker pack
+scripts/writing-validate.sh vendored unchanged from the writing pack
