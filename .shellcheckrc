@@ -4,3 +4,7 @@ shell=bash
 external-sources=true
 enable=avoid-nullary-conditions
 enable=deprecate-which
+
+# The vendored writing-validate.sh matches files against user-written glob patterns on purpose.
+# Fix it in the writing pack template, not here.
+disable=SC2254

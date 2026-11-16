@@ -1,0 +1,8 @@
+{
+  "name": "nba-infra-gate-tools",
+  "private": true,
+  "description": "Pinned tools for the duplication gate.",
+  "devDependencies": {
+    "jscpd": "5.4.2"
+  }
+}

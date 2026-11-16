@@ -16,3 +16,22 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+
+  # Gate tools are pinned by hash. Dependabot proposes new versions through reviewed PRs.
+  - package-ecosystem: pip
+    directory: /gate-tools
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: npm
+    directory: /gate-tools
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "ci"

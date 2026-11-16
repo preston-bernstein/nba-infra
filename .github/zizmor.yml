@@ -1,0 +1,8 @@
+# Only these actions may be used. A new third-party action fails the gate until someone adds it here in review.
+rules:
+  forbidden-uses:
+    config:
+      allow:
+        - actions/checkout
+        - DavidAnson/markdownlint-cli2-action
+        - preston-bernstein/ci-workflows/*

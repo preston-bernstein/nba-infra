@@ -4,8 +4,17 @@
 # Sibling repos are found under REPOS_DIR (default ..). On a host where the repos sit
 # next to the live compose file, run from that folder with REPOS_DIR=. and
 #   docker compose -f docker-compose.yml -f nba-infra/docker-compose.kafka.yml up -d --build
+# Log rotation: Docker keeps container logs forever without it. Pack: logging, rule log-compose-rotation.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   api:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     environment:
       KAFKA_BROKERS: kafka:9092
@@ -14,6 +23,8 @@ services:
         condition: service_completed_successfully
 
   go-feed:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     environment:
       KAFKA_BROKERS: kafka:9092
@@ -22,6 +33,8 @@ services:
         condition: service_completed_successfully
 
   predictor-consumer:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
     build:
       context: ${REPOS_DIR:-..}/nba-predictor
@@ -40,6 +53,8 @@ services:
     restart: unless-stopped
 
   kafka:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-limits]  # real memory use not measured yet; set mem_limit from observed use
     image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     environment:
@@ -66,6 +81,8 @@ services:
     restart: unless-stopped
 
   kafka-init:
+    logging:
+      <<: *default-logging
     x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
     image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     depends_on:
