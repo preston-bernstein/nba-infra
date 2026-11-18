@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Shared pre-commit hook. Enable it once per clone: git config core.hooksPath .githooks
+# CI runs the same script, because a hook can be skipped.
+set -euo pipefail
+exec bash "$(git rev-parse --show-toplevel)/scripts/run-gates.sh"

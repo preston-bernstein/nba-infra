@@ -1,6 +1,16 @@
+# Log rotation: Docker keeps container logs forever without it. Pack: logging, rule log-compose-rotation.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   proxy:
-    image: caddy:2-alpine
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first
+    image: caddy:2-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
     command: ["caddy", "reverse-proxy", "--from", ":80", "--to", "api:3000"]
     depends_on:
       - api
@@ -9,6 +19,9 @@ services:
     restart: unless-stopped
 
   api:
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first; dev stack; the prod overlay sets restart
     build:
       context: ../nba-analytics-hub/api
       dockerfile: Dockerfile
@@ -26,6 +39,9 @@ services:
       - "3000"
 
   go-feed:
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first; dev stack; the prod overlay sets restart
     build:
       context: ../nba-data-service
       dockerfile: Dockerfile
@@ -47,6 +63,9 @@ services:
       - "4000"
 
   predictor:
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first; dev stack; the prod overlay sets restart
     build:
       context: ../nba-predictor
       dockerfile: Dockerfile.dev
@@ -66,6 +85,9 @@ services:
       - "5000"
 
   predictor-consumer:
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first
     build:
       context: ../nba-predictor
       dockerfile: Dockerfile.dev
@@ -83,7 +105,10 @@ services:
     restart: unless-stopped
 
   kafka:
-    image: apache/kafka:3.8.1
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-limits]  # mem_limit needs measured memory use first
+    image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -110,7 +135,10 @@ services:
     restart: unless-stopped
 
   kafka-init:
-    image: apache/kafka:3.8.1
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # one-shot job that exits after creating topics; mem_limit needs measured memory use first
+    image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     depends_on:
       kafka:
         condition: service_healthy

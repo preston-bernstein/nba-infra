@@ -1,0 +1,93 @@
+{
+ "_reason": "Existing over-limit functions accepted on 2026-11-16; new code must stay within the limits. Fix them when touched.",
+ "functions": {
+  "scripts/core-check.py::main": {
+   "ccn": 20,
+   "nd": 0,
+   "length": 32,
+   "nloc": 32,
+   "token": 330,
+   "param": 1
+  },
+  "scripts/core-lizard.py::main": {
+   "ccn": 13,
+   "nd": 0,
+   "length": 27,
+   "nloc": 27,
+   "token": 331,
+   "param": 1
+  },
+  "scripts/core-lizard.py::run_lizard": {
+   "ccn": 11,
+   "nd": 0,
+   "length": 24,
+   "nloc": 24,
+   "token": 304,
+   "param": 2
+  },
+  "scripts/docker-check.py::check_compose": {
+   "ccn": 38,
+   "nd": 0,
+   "length": 50,
+   "nloc": 45,
+   "token": 569,
+   "param": 2
+  },
+  "scripts/docker-check.py::check_dockerfile": {
+   "ccn": 34,
+   "nd": 0,
+   "length": 49,
+   "nloc": 46,
+   "token": 512,
+   "param": 2
+  },
+  "scripts/docker-check.py::main": {
+   "ccn": 15,
+   "nd": 0,
+   "length": 20,
+   "nloc": 20,
+   "token": 171,
+   "param": 1
+  },
+  "scripts/logging-check.py::check_lines": {
+   "ccn": 20,
+   "nd": 0,
+   "length": 29,
+   "nloc": 29,
+   "token": 336,
+   "param": 1
+  },
+  "scripts/logging-check.py::services": {
+   "ccn": 13,
+   "nd": 0,
+   "length": 22,
+   "nloc": 21,
+   "token": 198,
+   "param": 1
+  },
+  "scripts/shell-check.py::check": {
+   "ccn": 35,
+   "nd": 0,
+   "length": 50,
+   "nloc": 44,
+   "token": 474,
+   "param": 2
+  },
+  "scripts/shell-check.py::main": {
+   "ccn": 11,
+   "nd": 0,
+   "length": 14,
+   "nloc": 14,
+   "token": 134,
+   "param": 1
+  },
+  "scripts/workflow-check.py::check_workflow": {
+   "ccn": 42,
+   "nd": 0,
+   "length": 73,
+   "nloc": 62,
+   "token": 631,
+   "param": 1
+  }
+ }
+}

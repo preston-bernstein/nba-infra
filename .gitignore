@@ -9,3 +9,6 @@ CLAUDE.md
 
 # OS
 .DS_Store
+
+# Gate tools
+node_modules/

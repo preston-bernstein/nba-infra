@@ -1,0 +1,1 @@
+CORE_EXCLUDE=**/.vale/**  # vendored Vale styles from the writing pack; they are data files and a copy of the pack

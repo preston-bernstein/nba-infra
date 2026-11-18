@@ -4,8 +4,18 @@
 # Sibling repos are found under REPOS_DIR (default ..). On a host where the repos sit
 # next to the live compose file, run from that folder with REPOS_DIR=. and
 #   docker compose -f docker-compose.yml -f nba-infra/docker-compose.kafka.yml up -d --build
+# Log rotation: Docker keeps container logs forever without it. Pack: logging, rule log-compose-rotation.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   api:
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first; overlay keeps the base file's restart setting
     environment:
       KAFKA_BROKERS: kafka:9092
     depends_on:
@@ -13,6 +23,9 @@ services:
         condition: service_completed_successfully
 
   go-feed:
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first; overlay keeps the base file's restart setting
     environment:
       KAFKA_BROKERS: kafka:9092
     depends_on:
@@ -20,6 +33,9 @@ services:
         condition: service_completed_successfully
 
   predictor-consumer:
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first
     build:
       context: ${REPOS_DIR:-..}/nba-predictor
       dockerfile: Dockerfile.dev
@@ -37,7 +53,10 @@ services:
     restart: unless-stopped
 
   kafka:
-    image: apache/kafka:3.8.1
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-limits]  # mem_limit needs measured memory use first
+    image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -62,7 +81,10 @@ services:
     restart: unless-stopped
 
   kafka-init:
-    image: apache/kafka:3.8.1
+    logging:
+      <<: *default-logging
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # one-shot job that exits after creating topics; mem_limit needs measured memory use first
+    image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     depends_on:
       kafka:
         condition: service_healthy
