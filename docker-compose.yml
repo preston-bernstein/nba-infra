@@ -9,8 +9,8 @@ services:
   proxy:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits, unpinned]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; image has no pinnable upstream tag or digest (local build or moving tag)
-    image: caddy:2-alpine
+    x-docker-allow: [no-healthcheck, no-limits]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first
+    image: caddy:2-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
     command: ["caddy", "reverse-proxy", "--from", ":80", "--to", "api:3000"]
     depends_on:
       - api
@@ -21,7 +21,7 @@ services:
   api:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first; dev stack; the prod overlay sets restart
     build:
       context: ../nba-analytics-hub/api
       dockerfile: Dockerfile
@@ -41,7 +41,7 @@ services:
   go-feed:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first; dev stack; the prod overlay sets restart
     build:
       context: ../nba-data-service
       dockerfile: Dockerfile
@@ -65,7 +65,7 @@ services:
   predictor:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first; dev stack; the prod overlay sets restart
     build:
       context: ../nba-predictor
       dockerfile: Dockerfile.dev
@@ -87,7 +87,7 @@ services:
   predictor-consumer:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
+    x-docker-allow: [no-healthcheck, no-limits]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first
     build:
       context: ../nba-predictor
       dockerfile: Dockerfile.dev
@@ -107,7 +107,7 @@ services:
   kafka:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-limits]  # real memory use not measured yet; set mem_limit from observed use
+    x-docker-allow: [no-limits]  # mem_limit needs measured memory use first
     image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     environment:
       KAFKA_NODE_ID: 1
@@ -137,7 +137,7 @@ services:
   kafka-init:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # one-shot job that exits after creating topics; mem_limit needs measured memory use first
     image: apache/kafka:3.8.1@sha256:22c4bea38875408e8f9fe52aca8e3a6ee67f9aa0090db59af99a2f6647558db5
     depends_on:
       kafka:

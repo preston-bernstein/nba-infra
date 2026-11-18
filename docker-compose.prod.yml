@@ -9,7 +9,7 @@ services:
   proxy:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use; restart is handled by the deploy script or a one-shot job
+    x-docker-allow: [no-healthcheck, no-limits, no-restart]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first; restart policy for the TLS proxy is a deploy decision
     ports:
       - "443:443"
     environment:
@@ -23,7 +23,7 @@ services:
   api:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
+    x-docker-allow: [no-healthcheck, no-limits]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first
     environment:
       NODE_ENV: production
     restart: unless-stopped
@@ -31,13 +31,13 @@ services:
   go-feed:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
+    x-docker-allow: [no-healthcheck, no-limits]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first
     restart: unless-stopped
 
   predictor:
     logging:
       <<: *default-logging
-    x-docker-allow: [no-healthcheck, no-limits]  # no health endpoint is defined yet; add one with the service; real memory use not measured yet; set mem_limit from observed use
+    x-docker-allow: [no-healthcheck, no-limits]  # healthcheck needs a probe endpoint in the sibling repo; mem_limit needs measured memory use first
     volumes:
       - ${PREDICTOR_DATA_CACHE:-predictor-data-cache}:/work/data_cache
       - ${PREDICTOR_ARTIFACTS:-predictor-artifacts}:/work/artifacts
